@@ -51,6 +51,16 @@ on:
           - 'false'
           - 'true'
           - 'default'
+      nomount_branch:
+        description: '启用nomount支持'
+        required: true
+        type: choice
+        default: master
+        options: 
+          - 'master'
+          - 'dev'
+          - 'experimental/hookless'
+          - 'none'
       droidspaces_enable:
         description: '是否启用Droidspaces容器支持(轻量化的完整Linux容器支持;false关闭,standard开启容器+ntsync支持,extend开启更多测试支持项)'
         required: true
@@ -464,6 +474,26 @@ jobs:
             fi
           fi
 
+      - name: 启用 nomount 支持
+        run: |
+          if [[ "${{ github.event.inputs.nomount_branch }}" != "none" ]]; then
+            echo "正在启用 nomount 容器支持..."
+            cd kernel_workspace/common
+            # 克隆 nomount 项目
+            git clone --depth=1 -b ${{ github.event.inputs.nomount_branch }} https://github.com/maxsteeel/nomount
+            # 应用内核集成补丁
+            cd common
+            patch -p1 < ../nomount/kernel/patches/nomount_6.6_kernel_integration.patch
+            # 复制 nomount 代码到 fs 目录
+            cp ../nomount/kernel/src/* ./fs/
+            # 启用 nomount 内核配置项
+            echo "CONFIG_NOMOUNT=y" >> ./arch/arm64/configs/gki_defconfig
+            
+            if [[ "${{ github.event.inputs.droidspaces_enable }}" == "none" ]]; then
+              echo "未启用，跳过配置nomount..."
+            fi
+          fi
+
       - name: 启用 Droidspaces 容器支持
         run: |
           if [[ "${{ github.event.inputs.droidspaces_enable }}" != "false" ]]; then
@@ -556,7 +586,15 @@ jobs:
           fi
           sed -i 's/${scm_version}//' ./common/scripts/setlocalversion
           echo "CONFIG_LOCALVERSION_AUTO=n" >> ./common/arch/arm64/configs/gki_defconfig
-           
+          
+      - name: 伪造构建时间与用户信息
+        run: |
+           # 设置时间
+           echo "KBUILD_BUILD_TIMESTAMP=Wed Apr  8 15:08:30 UTC 2026" >> $GITHUB_ENV
+           # 设置构建用户和主机
+           echo "KBUILD_BUILD_USER=kleaf" >> $GITHUB_ENV
+           echo "KBUILD_BUILD_HOST=build-host" >> $GITHUB_ENV
+         
       - name: 构建内核
         run: |
           WORKDIR="$(pwd)"
@@ -796,6 +834,7 @@ jobs:
           - 编译时间: ${{ env.TIME_FORM }}
           - 机型：欧加真骁龙8Elite通用 ${{ env.KERNEL_VERSION }}.${{ env.SUB_VERSION }} 内核（基于一加13国际版 ${{ env.KERNEL_VERSION }}.${{ env.SUB_VERSION }} 版官方OKI源码）
           - KSU分支：${{ env.KSU_TYPENAME }}
+          - nomount支持(分支): ${{ github.event.inputs.nomount_branch }}
           - susfs支持：${{ github.event.inputs.susfs_enable }}
           - KPM支持 ：${{ github.event.inputs.kpm_enable }}
           - LZ4支持：${{ github.event.inputs.lz4_enable }}
