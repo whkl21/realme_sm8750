@@ -477,15 +477,9 @@ jobs:
       - name: 启用 nomount 支持
         run: |
           if [[ "${{ github.event.inputs.nomount_branch }}" != "none" ]]; then
-            echo "正在启用 nomount 容器支持..."
+            echo "正在启用 nomount(分支: ${{ github.event.inputs.nomount_branch }}) 支持..."
             cd kernel_workspace/common
-            # 克隆 nomount 项目
-            git clone --depth=1 -b ${{ github.event.inputs.nomount_branch }} https://github.com/maxsteeel/nomount
-            # 应用内核集成补丁
-            cd common
-            patch -p1 < ../nomount/kernel/patches/nomount_6.6_kernel_integration.patch
-            # 复制 nomount 代码到 fs 目录
-            cp ../nomount/kernel/src/* ./fs/
+            curl https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/${{ github.event.inputs.nomount_branch }}/kernel/setup.sh | bash -s ${{ github.event.inputs.nomount_branch }}
             # 启用 nomount 内核配置项
             echo "CONFIG_NOMOUNT=y" >> ./arch/arm64/configs/gki_defconfig
             
