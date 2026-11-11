@@ -5,7 +5,7 @@ env:
   ANDROID_VERSION: 'android15'
   KERNEL_VERSION: '6.6'
   SUB_VERSION: '118'
-  KERNEL_NAME: 'android15-8-g29d86c5fc9dd-abogki428889875-4k'
+  KERNEL_NAME: 'android15-8-g9bc34d5b0c79-abogki537459655-4k'
   CCACHE_KEY: ccache-ecsv4-6.6.118
 
 on:
@@ -556,6 +556,10 @@ jobs:
           fi
           sed -i 's/${scm_version}//' ./common/scripts/setlocalversion
           echo "CONFIG_LOCALVERSION_AUTO=n" >> ./common/arch/arm64/configs/gki_defconfig
+          # 伪造编译时间、构建用户/主机（内核 mkcompile_h 会优先使用这些变量）
+          echo "KBUILD_BUILD_TIMESTAMP=Wed Jul 22 09:32:35 UTC 2026" >> $GITHUB_ENV
+          echo "KBUILD_BUILD_USER=kleaf" >> $GITHUB_ENV
+          echo "KBUILD_BUILD_HOST=build-host" >> $GITHUB_ENV
            
       - name: 构建内核
         run: |
